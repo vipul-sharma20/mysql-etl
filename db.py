@@ -1,5 +1,5 @@
 import MySQLdb as mysqldb
-from access_conrol import check_permission
+from access_control import check_permission
 
 
 class Connect(object):
@@ -25,7 +25,10 @@ class Connect(object):
     @check_permission
     def dbquery(self, query, cursor=None, **kwargs):
         if cursor:
-            return self._query_cursor(cursor, query, **kwargs)
+            if isinstance(cursor, mysqldb.cursors.Cursor):
+                return self._query_cursor(cursor, query, **kwargs)
+            else:
+                self.connection.close()
         else:
             return self._query_connection(query, **kwargs)
 
@@ -35,16 +38,15 @@ class Connect(object):
     def _query_connection(self, query, **kwargs):
         cursor = self.connection.cursor()
         try:
-            for row in self._query_cursor(self, cursor, query, **kwargs):
+            for row in self._query_cursor(cursor, query, **kwargs):
                 yield row
         except StopIteration:
             cursor.close()
 
-    @check_permission
     def _query_cursor(self, cursor, query, **kwargs):
         try:
             cursor.execute(query, **kwargs)
-        except mysqldb.Error as e:
+        except mysqldb.Error:
             self.connection.rollback()
         finally:
             cursor.close()
