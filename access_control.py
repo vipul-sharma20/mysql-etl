@@ -1,6 +1,6 @@
-import sqlparse
-
 from functools import wraps
+
+import sqlparse
 
 
 UNKNOWN = 'unknown'
