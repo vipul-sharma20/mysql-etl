@@ -1,8 +1,9 @@
 import MySQLdb as mysqldb
+from access_conrol import check_permission
 
 
 class Connect(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, source=False, *args, **kwargs):
         """
         Create DB connection
 
@@ -19,30 +20,40 @@ class Connect(object):
         See MySQLdb for more parameters
         """
         self.connection = mysqldb.Connection(*args, **kwargs)
+        self.source = source
 
+    @check_permission
     def dbquery(self, query, cursor=None, **kwargs):
         if cursor:
-            return _query_cursor(cursor, query, **kwargs)
+            return self._query_cursor(cursor, query, **kwargs)
         else:
-            return _query_connection(self.connection, query, **kwargs)
+            return self._query_connection(query, **kwargs)
 
+    def close(self):
+        return self.connection.close()
 
-def _query_connection(connection, query, **kwargs):
-    cursor = connection.cursor()
-    try:
-        for row in _query_cursor(cursor, query, **kwargs):
+    def _query_connection(self, query, **kwargs):
+        cursor = self.connection.cursor()
+        try:
+            for row in self._query_cursor(self, cursor, query, **kwargs):
+                yield row
+        except StopIteration:
+            cursor.close()
+
+    @check_permission
+    def _query_cursor(self, cursor, query, **kwargs):
+        try:
+            cursor.execute(query, **kwargs)
+        except mysqldb.Error as e:
+            self.connection.rollback()
+        finally:
+            cursor.close()
+            self.connection.close()
+
+        if not cursor.rowcount:
+            f_row = None
+            yield f_row
+
+        for row in cursor:
             yield row
-    except StopIteration:
-        cursor.close()
-
-
-def _query_cursor(cursor, query, **kwargs):
-    cursor.execute(query, **kwargs)
-
-    if not cursor.rowcount:
-        f_row = None
-        yield f_row
-
-    for row in cursor:
-        yield row
 
