@@ -27,7 +27,7 @@ class Connect(object):
         self.source = source
 
     @check_permission
-    def dbquery(self, query, cursor=None, **kwargs):
+    def dbquery(self, query=None, cursor=None, **kwargs):
         if cursor:
             if isinstance(cursor, mysqldb.cursors.Cursor):
                 return self._query_cursor(cursor, query, **kwargs)
@@ -40,7 +40,7 @@ class Connect(object):
         return self.connection.close()
 
     @check_connection
-    def _query_connection(self, query, **kwargs):
+    def _query_connection(self, query=None, **kwargs):
         cursor = self.connection.cursor()
         try:
             for row in self._query_cursor(cursor, query, **kwargs):
@@ -49,11 +49,12 @@ class Connect(object):
             # :TODO: Log statement here
             cursor.close()
 
-    def _query_cursor(self, cursor, query, **kwargs):
+    def _query_cursor(self, cursor=None, query=None, **kwargs):
         try:
             cursor.execute(query, **kwargs)
         except mysqldb.Error:
             # :TODO: Log statement here
+            print 'Error'
             self.connection.rollback()
         finally:
             cursor.close()
@@ -71,11 +72,14 @@ class Connect(object):
 
     @check_connection
     @prepare_query(SQL_INSERT)
-    def todb(self, table, tablename, query=None, **kwargs):
+    @check_permission
+    def todb(self, table=None, tablename=None, **kwargs):
+        query = kwargs.get('query')
         if query:
-            print query
-            #cursor = connection.cursor()
-            #self._query_cursor(cursor, query)
+            cursor = self.connection.cursor()
+            cursor.executemany(query, table)
+            cursor.close()
+            self.connection.commit()
         else:
             # :TODO: Log statement here
             pass
