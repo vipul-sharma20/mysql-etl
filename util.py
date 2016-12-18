@@ -21,7 +21,7 @@ def check_connection(func):
             print 'Connection lost'
             return
         # :TODO: Log statement here
-        func(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
     return connection_wrapper
 
 
